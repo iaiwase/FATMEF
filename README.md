@@ -1,2 +1,2 @@
 # FATMEF
-The code will be reorganized and made public after completion
+The code will be made public after being organized
