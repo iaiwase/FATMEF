@@ -12,7 +12,6 @@ import numpy as np
 from FATMEF import CLMEFNet
 
 from crLoss import CRLoss
-from crinfoloss import CRInfoLoss
 from LossW import LossW
 
 from torchvision import transforms
@@ -48,22 +47,17 @@ parser.add_argument('--gpus', type=lambda s: [int(item.strip()) for item in s.sp
 parser.add_argument('--img_size', type=int, default=256, help='img size')
 
 parser.add_argument('--samplelist', type=str, default='./extreme_MEF_pool_gray_1/', help='model samplelist')
-parser.add_argument('--labellist', type=str, default='./extreme_MEF_pool_gray_1/', help='model samplelist')
 
 parser.add_argument('--perloss', type=bool, default=True, help='using perloss')
 parser.add_argument('--ssimloss', type=bool, default=True, help='using perloss')
 parser.add_argument('--tvloss', type=bool, default=True, help='using perloss')
 parser.add_argument('--crloss', type=bool, default=False, help='using perloss')
-parser.add_argument('--localloss', type=bool, default=False, help='using perloss')
-parser.add_argument('--InfoNCELoss', type=bool, default=False, help='using perloss')
 
 parser.add_argument('--w_crloss', type=float, default=0.08, help='using perloss')
 parser.add_argument('--w_mseloss', type=float, default=1, help='using perloss')
 parser.add_argument('--w_l1loss', type=float, default=1, help='using perloss')
 parser.add_argument('--w_ssimloss', type=float, default=1, help='using perloss')
 parser.add_argument('--w_tvloss', type=float, default=20, help='using perloss')
-parser.add_argument('--w_localloss', type=float, default=0.1, help='using perloss')
-parser.add_argument('--w_infonceloss', type=float, default=20, help='using perloss')
 
 parser.add_argument('--epoch', type=int, default=35, help='training epoch')
 parser.add_argument('--batch_size', type=int, default=28, help='batchsize')
@@ -120,8 +114,6 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
         all_tv_loss = 0.
         all_cr_loss = 0.
         all_l1_loss = 0.
-        all_loss_local_cr = 0
-        all_loss_infoNCE = 0
 
         model.train()
         for index, image in enumerate(tqdm(train_loader)):
@@ -129,14 +121,13 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
             img_orig = image[0].to(device)  # shape:[B,1,256,256] I0
             img_trans = image[1].to(device)  # shape:[B,1,256,256] It
             img_deip = image[2].to(device) # DEIP
-            img_label = image[3].to(device) # Label
             optimizer.zero_grad()
             img_recon = model(img_trans.float())  # If
 
             loss = criterion[0](img_recon, img_orig)
             loss_mse = loss
             if args.perloss:
-                loss_cr, loss_local_cr = criterion[1](torch.cat((img_recon, img_recon, img_recon), 1),
+                loss_cr = criterion[1](torch.cat((img_recon, img_recon, img_recon), 1),
                                                                     torch.cat((img_orig, img_orig, img_orig), 1),
                                                                     torch.cat((img_deip, img_deip, img_deip), 1))
 
@@ -151,11 +142,8 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
                     loss_ssim = torch.tensor(0.0)
                 loss_tv = criterion[3](img_recon, img_orig)
                 loss_l1 = criterion[4](img_recon, img_orig)
-                loss_infoNCE = criterion[6](torch.cat((img_recon, img_recon, img_recon), 1),
-                                            torch.cat((img_label, img_label, img_label), 1),
-                                            torch.cat((img_trans, img_trans, img_trans), 1))
                 loss = args.w_mseloss * loss_mse + args.w_crloss * loss_cr + args.w_ssimloss * loss_ssim \
-                       + args.w_tvloss * loss_tv + args.w_l1loss * loss_l1 + args.w_localloss * loss_local_cr + args.w_infonceloss * loss_infoNCE
+                       + args.w_tvloss * loss_tv + args.w_l1loss * loss_l1
 
             loss.backward()
             optimizer.step()
@@ -166,8 +154,6 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
             all_tv_loss += loss_tv.item()
             all_cr_loss += loss_cr.item()
             all_l1_loss += loss_l1.item()
-            all_loss_local_cr += loss_local_cr.item()
-            all_loss_infoNCE += loss_infoNCE.item()
         
         print("all_cr_loss:",all_cr_loss/(len(train_loader)))
         print("all_tv_loss:",all_tv_loss/(len(train_loader)))
@@ -180,8 +166,6 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
         writer.add_scalar('Train/tv_loss', all_tv_loss / (len(train_loader)), epoch)
         writer.add_scalar('Train/cr_loss', all_cr_loss / (len(train_loader)), epoch)
         writer.add_scalar('Train/l1_loss', all_l1_loss / (len(train_loader)), epoch)
-        writer.add_scalar('Train/local_cr_loss', all_loss_local_cr / (len(train_loader)), epoch)
-        writer.add_scalar('Train/infoNCE_loss', all_loss_infoNCE / (len(train_loader)), epoch)
         writer.add_scalar('Train/memory', torch.cuda.memory_allocated() / 1024 / 1024, epoch)
 
 
@@ -196,21 +180,18 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
             all_tv_loss = 0.
             all_cr_loss = 0.
             all_l1_loss = 0.
-            all_loss_local_cr = 0
-            all_loss_infoNCE = 0
 
             for index, image in enumerate(tqdm(val_loader)):
                 img_orig = image[0].to(device)  # shape:[B,1,256,256] I0
                 img_trans = image[1].to(device)  # shape:[B,1,256,256] It
                 img_deip = image[2].to(device)  # DEIP
-                img_label = image[3].to(device)  # Label
 
-                img_recon = model(img_orig.float())
+                img_recon = model(img_trans.float())
 
                 loss = criterion[0](img_recon, img_orig)
                 loss_mse = loss
                 if args.perloss:
-                    loss_cr, loss_local_cr = criterion[1](torch.cat((img_recon, img_recon, img_recon), 1),
+                    loss_cr = criterion[1](torch.cat((img_recon, img_recon, img_recon), 1),
                                                                         torch.cat((img_orig, img_orig, img_orig), 1),
                                                                         torch.cat((img_deip, img_deip, img_deip), 1))
 
@@ -225,19 +206,15 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
                         loss_ssim = torch.tensor(0.0)
                     loss_tv = criterion[3](img_recon, img_orig)
                     loss_l1 = criterion[4](img_recon, img_orig)
-                    loss_infoNCE = criterion[6](torch.cat((img_recon, img_recon, img_recon), 1),torch.cat((img_label, img_label, img_label), 1),torch.cat((img_trans, img_trans, img_trans), 1))
-                    
                     
                     loss = args.w_mseloss * loss_mse + args.w_crloss * loss_cr + args.w_ssimloss * loss_ssim \
-                       + args.w_tvloss * loss_tv + args.w_l1loss * loss_l1 + args.w_localloss * loss_local_cr + args.w_infonceloss * loss_infoNCE
+                       + args.w_tvloss * loss_tv + args.w_l1loss * loss_l1
                 all_loss += loss.item()
                 all_mse_loss += loss_mse.item()
                 all_ssim_loss += loss_ssim.item()
                 all_tv_loss += loss_tv.item()
                 all_cr_loss += loss_cr.item()
                 all_l1_loss += loss_l1.item()
-                all_loss_local_cr += loss_local_cr.item()
-                all_loss_infoNCE += loss_infoNCE.item()
         
         print("all_cr_loss:",all_cr_loss/(len(val_loader)))
         print("all_tv_loss:",all_tv_loss/(len(val_loader)))
@@ -250,8 +227,6 @@ def train(model, train_loader, val_loader, optimizer, criterion, args):
         writer.add_scalar('Val/tv_loss', all_tv_loss / (len(val_loader)), epoch)
         writer.add_scalar('Val/cr_loss', all_cr_loss / (len(val_loader)), epoch)
         writer.add_scalar('Val/l1_loss', all_l1_loss / (len(val_loader)), epoch)
-        writer.add_scalar('Val/local_cr_loss', all_loss_local_cr / (len(train_loader)), epoch)
-        writer.add_scalar('Val/infoNCE_loss', all_loss_infoNCE / (len(train_loader)), epoch)
 
         loss_val.append(all_loss / (len(val_loader)))
 
@@ -317,8 +292,6 @@ if __name__ == "__main__":
     criterion.append(TV_Loss().to(device))# 3
     criterion.append(nn.L1Loss().to(device))# 4
     criterion.append(LossW(vgg_model).to(device))# 5
-    criterion.append(CRInfoLoss(vgg_model, args).to(device))# 6
-
 
     optimizer = optim.Adam(params=filter(lambda x: x.requires_grad, model.parameters()), lr=args.lr, betas=(0.9, 0.999),
                            eps=1e-08)
