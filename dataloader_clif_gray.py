@@ -51,13 +51,7 @@ class Fusionset(Data.Dataset):
         # FORM here img.type is PIL.IMAGE
 #         img = self._tensor(img).to(self.device)
         img = self._tensor(img)
-        
-        label_list = os.listdir(self.args.labellist)
-        label_path = self.args.labellist + random.sample(label_list, 1)[0]
-        label = Image.open(label_path)
-        label = self.transform(label)
-        label = label.convert('L')
-        label = self._tensor(label)
+
         if self.CR == True:
             sample_list = os.listdir(self.args.samplelist)
             sample_path = self.args.samplelist + random.sample(sample_list, 1)[0]
@@ -74,7 +68,7 @@ class Fusionset(Data.Dataset):
 
         else:
             trans_img = img
-        return img, trans_img,sample,label
+        return img, trans_img,sample
 
 
 if __name__ == '__main__':
