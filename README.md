@@ -6,7 +6,8 @@ Information about Swin-Transformer can be found in "https://github.com/microsoft
 You need to place the pre trained model "swin_base_patch4_window7_224_22k.pth" in the checkpoint folder
 
 # Dataset
-We use [MS-COCO](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#dataset-zoo-coco-2017) for traning.
+We use [MS-COCO](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#dataset-zoo-coco-2017) and [SICE](https://github.com/csjcai/SICE) for traning.
+We use [MEFB](https://github.com/xingchenzhang/MEFB) for testing.
 
 # For training
 Then, you can train with
