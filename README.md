@@ -1,7 +1,7 @@
 # FATMEF
 This is a PyTorch/GPU implementation of the manuscript: Frequency Domain Attention Enhanced Multi-Exposure Image Fusion with FATMEF:
 # pre-trained Swin-Transformer
-Information about Swin-Transformer can be found in "https://github.com/microsoft/Swin-Transformer".The model Swin-B trained by ImageNet-22K with a resolution of 224 can be found.
+Information about Swin-Transformer can be found in "https://github.com/microsoft/Swin-Transformer". The model Swin-B trained by ImageNet-22K with a resolution of 224 can be found.
 
 You need to place the pre trained model "swin_base_patch4_window7_224_22k.pth" in the checkpoint folder
 
