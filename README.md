@@ -10,6 +10,9 @@ We use [MS-COCO](https://docs.voxel51.com/user_guide/dataset_zoo/datasets.html#d
 
 We use [MEFB](https://github.com/xingchenzhang/MEFB) for testing.
 
+## Environment
+For details, please refer to the requirements.txt file.
+
 ## For training
 Then, you can train with
 ```
