@@ -12,7 +12,9 @@ We use [MEFB](https://github.com/xingchenzhang/MEFB) for testing.
 
 ## Environment
 Pytorch 1.8.1
+
 CUDA 11.1
+
 For details, please refer to the requirements.txt file.
 
 ## For training
